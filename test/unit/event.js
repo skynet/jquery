@@ -392,28 +392,15 @@ test("on bubbling, isDefaultPrevented", function() {
 		$main = jQuery( "#qunit-fixture" ),
 		fakeClick = function($jq) {
 			// Use a native click so we don't get jQuery simulated bubbling
-			if ( document.createEvent ) {
-				var e = document.createEvent( "MouseEvents" );
-				e.initEvent( "click", true, true );
-				$jq[0].dispatchEvent(e);
-			}
-			else if ( $jq[0].click ) {
-				$jq[0].click();	// IE
-			}
+			var e = document.createEvent( "MouseEvents" );
+			e.initEvent( "click", true, true );
+			$jq[ 0 ].dispatchEvent( e );
 		};
 	$anchor2.on( "click", function(e) {
 		e.preventDefault();
 	});
-	$main.on("click", "#foo", function(e) {
-		var orig = e.originalEvent;
-
-		if ( typeof(orig.defaultPrevented) === "boolean" || typeof(orig.returnValue) === "boolean" || orig["getPreventDefault"] ) {
-			equal( e.isDefaultPrevented(), true, "isDefaultPrevented true passed to bubbled event" );
-
-		} else {
-			// Opera < 11 doesn't implement any interface we can use, so give it a pass
-			ok( true, "isDefaultPrevented not supported by this browser, test skipped" );
-		}
+	$main.on( "click", "#foo", function( e ) {
+		equal( e.isDefaultPrevented(), true, "isDefaultPrevented true passed to bubbled event" );
 	});
 	fakeClick( $anchor2 );
 	$anchor2.off( "click" );
@@ -1224,8 +1211,6 @@ test("trigger(eventObject, [data], [fn])", function() {
 	equal( event.isDefaultPrevented(), false, "default not prevented" );
 });
 
-// Explicitly introduce global variable for oldIE so QUnit doesn't complain if checking globals
-window.onclick = undefined;
 test(".trigger() bubbling on disconnected elements (#10489)", function() {
 	expect(2);
 
@@ -1400,7 +1385,11 @@ test("Submit event can be stopped (#11049)", function() {
 });
 
 // Test beforeunload event only if it supported (i.e. not Opera)
-if ( window.onbeforeunload === null ) {
+// Support: iOS 7+, Android<4.0
+// iOS & old Android have the window.onbeforeunload field but don't support the beforeunload
+// handler making it impossible to feature-detect the support.
+if ( window.onbeforeunload === null &&
+	!/(ipad|iphone|ipod|android 2\.3)/i.test( navigator.userAgent ) ) {
 	asyncTest("on(beforeunload)", 1, function() {
 		var iframe = jQuery(jQuery.parseHTML("<iframe src='data/event/onbeforeunload.html'><iframe>"));
 
@@ -2346,51 +2335,6 @@ test("checkbox state (#3827)", function() {
 	jQuery( cb ).triggerHandler( "click" );
 });
 
-test("focus-blur order (#12868)", function() {
-	expect( 5 );
-
-	var order,
-		$text = jQuery("#text1"),
-		$radio = jQuery("#radio1").trigger("focus");
-
-	// IE6-10 fire focus/blur events asynchronously; this is the resulting mess.
-	// IE's browser window must be topmost for this to work properly!!
-	stop();
-	$radio[0].focus();
-
-	setTimeout( function() {
-
-		$text
-			.on( "focus", function(){
-				equal( order++, 1, "text focus" );
-			})
-			.on( "blur", function(){
-				equal( order++, 0, "text blur" );
-			});
-		$radio
-			.on( "focus", function(){
-				equal( order++, 1, "radio focus" );
-			})
-			.on( "blur", function(){
-				equal( order++, 0, "radio blur" );
-			});
-
-		// Enabled input getting focus
-		order = 0;
-		equal( document.activeElement, $radio[0], "radio has focus" );
-		$text.trigger("focus");
-		setTimeout( function() {
-			equal( document.activeElement, $text[0], "text has focus" );
-
-			// Run handlers without native method on an input
-			order = 1;
-			$radio.triggerHandler( "focus" );
-			$text.off();
-			start();
-		}, 50 );
-	}, 50 );
-});
-
 test("hover event no longer special since 1.9", function() {
 	expect( 1 );
 
@@ -2432,6 +2376,52 @@ test("fixHooks extensions", function() {
 	delete jQuery.event.fixHooks.click;
 	$fixture.off( "click" ).remove();
 	jQuery.event.fixHooks.click = saved;
+});
+
+test( "focusin using non-element targets", function() {
+	expect( 2 );
+
+	jQuery( document ).on( "focusin", function( e ) {
+		ok( e.type === "focusin", "got a focusin event on a document" );
+	}).trigger( "focusin" ).off( "focusin" );
+
+	jQuery( window ).on( "focusin", function( e ) {
+		ok( e.type === "focusin", "got a focusin event on a window" );
+	}).trigger( "focusin" ).off( "focusin" );
+
+});
+
+testIframeWithCallback( "focusin from an iframe", "event/focusinCrossFrame.html", function( frameDoc ) {
+	expect(1);
+
+	var input = jQuery( frameDoc ).find( "#frame-input" );
+
+	if ( input.length ) {
+		// Create a focusin handler on the parent; shouldn't affect the iframe's fate
+		jQuery ( "body" ).on( "focusin.iframeTest", function() {
+			ok( false, "fired a focusin event in the parent document" );
+		});
+
+		input.on( "focusin", function() {
+			ok( true, "fired a focusin event in the iframe" );
+		});
+
+		// Avoid a native event; Chrome can't force focus to another frame
+		input.trigger( "focusin" );
+
+		// Must manually remove handler to avoid leaks in our data store
+		input.remove();
+
+		// Be sure it was removed; nothing should happen
+		input.trigger( "focusin" );
+
+		// Remove body handler manually since it's outside the fixture
+		jQuery( "body" ).off( "focusin.iframeTest" );
+
+	} else {
+		// Opera 12 (pre-Blink) doesn't select anything
+		ok( true, "SOFTFAIL: no focus event fired in the iframe" );
+	}
 });
 
 testIframeWithCallback( "jQuery.ready promise", "event/promiseReady.html", function( isOk ) {
@@ -2572,33 +2562,6 @@ test( "make sure events cloned correctly", 18, function() {
 	clone.find("#check1").trigger("change"); // 0 events should fire
 });
 
-test( "Check order of focusin/focusout events", 2, function() {
-	var focus, blur,
-		input = jQuery( "#name" );
-
-	input.on( "focus", function() {
-		focus = true;
-
-	}).on( "focusin", function() {
-		ok( !focus, "Focusin event should fire before focus does" );
-
-	}).on( "blur", function() {
-		blur = true;
-
-	}).on( "focusout", function() {
-		ok( !blur, "Focusout event should fire before blur does" );
-	});
-
-	// gain focus
-	input.trigger( "focus" );
-
-	// then lose it
-	jQuery( "#search" ).trigger( "focus" );
-
-	// cleanup
-	input.off();
-});
-
 test( "String.prototype.namespace does not cause trigger() to throw (#13360)", function() {
 	expect( 1 );
 	var errored = false;
@@ -2621,3 +2584,78 @@ test( "Inline event result is returned (#13993)", function() {
 
 	equal( result, 42, "inline handler returned value" );
 });
+
+// This tests are unreliable in Firefox
+if ( !(/firefox/i.test( window.navigator.userAgent )) ) {
+	test( "Check order of focusin/focusout events", 2, function() {
+		var focus, blur,
+			input = jQuery( "#name" );
+
+		input.on( "focus", function() {
+			focus = true;
+
+		}).on( "focusin", function() {
+			ok( !focus, "Focusin event should fire before focus does" );
+
+		}).on( "blur", function() {
+			blur = true;
+
+		}).on( "focusout", function() {
+			ok( !blur, "Focusout event should fire before blur does" );
+		});
+
+		// gain focus
+		input.trigger( "focus" );
+
+		// then lose it
+		jQuery( "#search" ).trigger( "focus" );
+
+		// cleanup
+		input.off();
+	});
+
+	test("focus-blur order (#12868)", function() {
+		expect( 5 );
+
+		var order,
+			$text = jQuery("#text1"),
+			$radio = jQuery("#radio1").trigger("focus");
+
+		// IE6-10 fire focus/blur events asynchronously; this is the resulting mess.
+		// IE's browser window must be topmost for this to work properly!!
+		stop();
+		$radio[0].focus();
+
+		setTimeout( function() {
+
+			$text
+				.on( "focus", function(){
+					equal( order++, 1, "text focus" );
+				})
+				.on( "blur", function(){
+					equal( order++, 0, "text blur" );
+				});
+			$radio
+				.on( "focus", function(){
+					equal( order++, 1, "radio focus" );
+				})
+				.on( "blur", function(){
+					equal( order++, 0, "radio blur" );
+				});
+
+			// Enabled input getting focus
+			order = 0;
+			equal( document.activeElement, $radio[0], "radio has focus" );
+			$text.trigger("focus");
+			setTimeout( function() {
+				equal( document.activeElement, $text[0], "text has focus" );
+
+				// Run handlers without native method on an input
+				order = 1;
+				$radio.triggerHandler( "focus" );
+				$text.off();
+				start();
+			}, 50 );
+		}, 50 );
+	});
+}

@@ -409,7 +409,6 @@ test("isFunction", function() {
 	// Firefox says this is a function
 	ok( !jQuery.isFunction(obj), "Object Element" );
 
-	// IE says this is an object
 	// Since 1.3, this isn't supported (#2968)
 	//ok( jQuery.isFunction(obj.getAttribute), "getAttribute Function" );
 
@@ -427,7 +426,6 @@ test("isFunction", function() {
 	input.type = "text";
 	document.body.appendChild( input );
 
-	// IE says this is an object
 	// Since 1.3, this isn't supported (#2968)
 	//ok( jQuery.isFunction(input.focus), "A default function property" );
 
@@ -585,11 +583,10 @@ test("isWindow", function() {
 });
 
 test("jQuery('html')", function() {
-	expect( 15 );
+	expect( 18 );
 
 	var s, div, j;
 
-	QUnit.reset();
 	jQuery["foo"] = false;
 	s = jQuery("<script>jQuery.foo='test';</script>")[0];
 	ok( s, "Creating a script" );
@@ -605,7 +602,6 @@ test("jQuery('html')", function() {
 	equal( div.childNodes[1].nodeType, 1, "Paragraph." );
 	equal( div.childNodes[1].firstChild.nodeType, 3, "Paragraph text." );
 
-	QUnit.reset();
 	ok( jQuery("<link rel='stylesheet'/>")[0], "Creating a link" );
 
 	ok( !jQuery("<script/>")[0].parentNode, "Create a script" );
@@ -620,10 +616,13 @@ test("jQuery('html')", function() {
 	ok( jQuery("<div></div>")[0], "Create a div with closing tag." );
 	ok( jQuery("<table></table>")[0], "Create a table with closing tag." );
 
-	// equal( jQuery("element[attribute='<div></div>']").length, 0, "When html is within brackets, do not recognize as html." );
-	// equal( jQuery("element[attribute=<div></div>]").length, 0, "When html is within brackets, do not recognize as html." );
-	// equal( jQuery("element:not(<div></div>)").length, 0, "When html is within parens, do not recognize as html." );
-	// equal( jQuery("\\<div\\>").length, 0, "Ignore escaped html characters" );
+	equal( jQuery( "element[attribute='<div></div>']" ).length, 0,
+		"When html is within brackets, do not recognize as html." );
+	//equal( jQuery( "element[attribute=<div></div>]" ).length, 0,
+	//	"When html is within brackets, do not recognize as html." );
+	equal( jQuery( "element:not(<div></div>)" ).length, 0,
+		"When html is within parens, do not recognize as html." );
+	equal( jQuery( "\\<div\\>" ).length, 0, "Ignore escaped html characters" );
 });
 
 test("jQuery('massive html #7990')", function() {
@@ -1327,7 +1326,7 @@ test("jQuery.parseHTML", function() {
 	equal( jQuery.parseHTML(), null, "Nothing in, null out." );
 	equal( jQuery.parseHTML( null ), null, "Null in, null out." );
 	equal( jQuery.parseHTML( "" ), null, "Empty string in, null out." );
-	raises(function() {
+	throws(function() {
 		jQuery.parseHTML( "<div></div>", document.getElementById("form") );
 	}, "Passing an element as the context raises an exception (context should be a document)");
 
@@ -1359,28 +1358,91 @@ test("jQuery.parseHTML", function() {
 	ok( jQuery.parseHTML("<#if><tr><p>This is a test.</p></tr><#/if>") || true, "Garbage input should not cause error" );
 });
 
-test("jQuery.parseJSON", function(){
-	expect( 9 );
+test("jQuery.parseJSON", function() {
+	expect( 20 );
 
-	equal( jQuery.parseJSON( null ), null, "Actual null returns null" );
-	equal( jQuery.isEmptyObject( jQuery.parseJSON("{}") ), true, "Empty object returns empty object" );
-	deepEqual( jQuery.parseJSON("{\"test\":1}"), { "test": 1 }, "Plain object parses" );
-	deepEqual( jQuery.parseJSON("\n{\"test\":1}"), { "test": 1 }, "Leading whitespaces are ignored." );
-	raises(function() {
+	strictEqual( jQuery.parseJSON( null ), null, "primitive null" );
+	strictEqual( jQuery.parseJSON("0.88"), 0.88, "Number" );
+	strictEqual(
+		jQuery.parseJSON("\" \\\" \\\\ \\/ \\b \\f \\n \\r \\t \\u007E \\u263a \""),
+		" \" \\ / \b \f \n \r \t ~ \u263A ",
+		"String escapes"
+	);
+	deepEqual( jQuery.parseJSON("{}"), {}, "Empty object" );
+	deepEqual( jQuery.parseJSON("{\"test\":1}"), { "test": 1 }, "Plain object" );
+	deepEqual( jQuery.parseJSON("[0]"), [ 0 ], "Simple array" );
+
+	deepEqual(
+		jQuery.parseJSON("[ \"string\", -4.2, 2.7180e0, 3.14E-1, {}, [], true, false, null ]"),
+		[ "string", -4.2, 2.718, 0.314, {}, [], true, false, null ],
+		"Array of all data types"
+	);
+	deepEqual(
+		jQuery.parseJSON( "{ \"string\": \"\", \"number\": 4.2e+1, \"object\": {}," +
+			"\"array\": [[]], \"boolean\": [ true, false ], \"null\": null }"),
+		{ string: "", number: 42, object: {}, array: [[]], boolean: [ true, false ], "null": null },
+		"Dictionary of all data types"
+	);
+
+	deepEqual( jQuery.parseJSON("\n{\"test\":1}\t"), { "test": 1 },
+		"Leading and trailing whitespace are ignored" );
+
+	throws(function() {
 		jQuery.parseJSON();
 	}, null, "Undefined raises an error" );
-	raises( function() {
+	throws(function() {
 		jQuery.parseJSON( "" );
 	}, null, "Empty string raises an error" );
-	raises(function() {
+	throws(function() {
 		jQuery.parseJSON("''");
 	}, null, "Single-quoted string raises an error" );
-	raises(function() {
+	/*
+
+	// Broken on IE8
+	throws(function() {
+		jQuery.parseJSON("\" \\a \"");
+	}, null, "Invalid string escape raises an error" );
+
+	// Broken on IE8, Safari 5.1 Windows
+	throws(function() {
+		jQuery.parseJSON("\"\t\"");
+	}, null, "Unescaped control character raises an error" );
+
+	// Broken on IE8
+	throws(function() {
+		jQuery.parseJSON(".123");
+	}, null, "Number with no integer component raises an error" );
+
+	*/
+	throws(function() {
+		var result = jQuery.parseJSON("0101");
+
+		// Support: IE9+
+		// Ensure base-10 interpretation on browsers that erroneously accept leading-zero numbers
+		if ( result === 101 ) {
+			throw new Error("close enough");
+		}
+	}, null, "Leading-zero number raises an error or is parsed as decimal" );
+	throws(function() {
 		jQuery.parseJSON("{a:1}");
 	}, null, "Unquoted property raises an error" );
-	raises(function() {
+	throws(function() {
 		jQuery.parseJSON("{'a':1}");
 	}, null, "Single-quoted property raises an error" );
+	throws(function() {
+		jQuery.parseJSON("[,]");
+	}, null, "Array element elision raises an error" );
+	throws(function() {
+		jQuery.parseJSON("{},[]");
+	}, null, "Comma expression raises an error" );
+	throws(function() {
+		jQuery.parseJSON("[]\n,{}");
+	}, null, "Newline-containing comma expression raises an error" );
+	throws(function() {
+		jQuery.parseJSON("\"\"\n\"\"");
+	}, null, "Automatic semicolon insertion raises an error" );
+
+	strictEqual( jQuery.parseJSON([ 0 ]), 0, "Input cast to string" );
 });
 
 test("jQuery.parseXML", 8, function(){
@@ -1445,3 +1507,10 @@ testIframeWithCallback( "document ready when jQuery loaded asynchronously (#1365
 	expect( 1 );
 	equal( true, ready, "document ready correctly fired when jQuery is loaded after DOMContentLoaded" );
 });
+
+testIframeWithCallback( "Tolerating alias-masked DOM properties (#14074)", "core/aliased.html",
+	function( errors ) {
+			expect( 1 );
+			deepEqual( errors, [], "jQuery loaded" );
+	}
+);

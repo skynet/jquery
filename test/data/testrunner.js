@@ -7,13 +7,11 @@ var oldStart = window.start,
 	// Store the old counts so that we only assert on tests that have actually leaked,
 	// instead of asserting every time a test has leaked sometime in the past
 	oldCacheLength = 0,
-	oldFragmentsLength = 0,
 	oldActive = 0,
 
 	expectedDataKeys = {},
-
+  reset,
 	splice = [].splice,
-	reset = QUnit.reset,
 	ajaxSettings = jQuery.ajaxSettings;
 
 
@@ -118,7 +116,6 @@ QUnit.config.urlConfig.push({
 window.moduleTeardown = function() {
 	var i,
 		expectedKeys, actualKeys,
-		fragmentsLength = 0,
 		cacheLength = 0;
 
 	// Only look for jQuery data problems if this test actually
@@ -157,17 +154,9 @@ window.moduleTeardown = function() {
 		oldActive = jQuery.active;
 	}
 
-	// Allow QUnit.reset to clean up any attached elements before checking for leaks
-	QUnit.reset();
 
 	for ( i in jQuery.cache ) {
 		++cacheLength;
-	}
-
-	jQuery.fragments = {};
-
-	for ( i in jQuery.fragments ) {
-		++fragmentsLength;
 	}
 
 	// Because QUnit doesn't have a mechanism for retrieving the number of expected assertions for a test,
@@ -176,10 +165,6 @@ window.moduleTeardown = function() {
 		equal( cacheLength, oldCacheLength, "No unit tests leak memory in jQuery.cache" );
 		oldCacheLength = cacheLength;
 	}
-	if ( fragmentsLength !== oldFragmentsLength ) {
-		equal( fragmentsLength, oldFragmentsLength, "No unit tests leak memory in jQuery.fragments" );
-		oldFragmentsLength = fragmentsLength;
-	}
 };
 
 QUnit.done(function() {
@@ -187,8 +172,8 @@ QUnit.done(function() {
 	supportjQuery("#qunit ~ *").remove();
 });
 
-// jQuery-specific QUnit.reset
-QUnit.reset = function() {
+// jQuery-specific post-test cleanup
+reset = function () {
 
 	// Ensure jQuery events and data on the fixture are properly removed
 	jQuery("#qunit-fixture").empty();
@@ -205,10 +190,10 @@ QUnit.reset = function() {
 
 	// Cleanup globals
 	Globals.cleanup();
-
-	// Let QUnit reset the fixture
-	reset.apply( this, arguments );
+	jQuery("#qunit-fixture")[0].innerHTML = QUnit.config.fixture;
 };
+
+QUnit.testDone(reset);
 
 // Register globals for cleanup and the cleanup code itself
 // Explanation at http://perfectionkills.com/understanding-delete/#ie_bugs
@@ -351,12 +336,11 @@ function testSubproject( label, subProjectURL, risTests, complete ) {
 
 				// WARNING: UNDOCUMENTED INTERFACE
 				QUnit.config.fixture = fixtureHTML;
-				QUnit.reset();
+        reset();
 				if ( supportjQuery("#qunit-fixture").html() !== fixtureHTML ) {
 					ok( false, "Copied subproject fixture" );
 					return;
 				}
-
 				fixtureReplaced = true;
 			}
 

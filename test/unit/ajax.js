@@ -182,17 +182,24 @@ module( "ajax", {
 		});
 	});
 
-	ajaxTest( "jQuery.ajax() - headers", 4, {
+	ajaxTest( "jQuery.ajax() - headers", 5, {
 		setup: function() {
 			jQuery( document ).ajaxSend(function( evt, xhr ) {
 				xhr.setRequestHeader( "ajax-send", "test" );
 			});
 		},
-		url: url("data/headers.php?keys=siMPle_SometHing-elsE_OthEr_ajax-send"),
+		url: url("data/headers.php?keys=siMPle_SometHing-elsE_OthEr_Nullable_undefined_Empty_ajax-send"),
 		headers: {
 			"siMPle": "value",
 			"SometHing-elsE": "other value",
-			"OthEr": "something else"
+			"OthEr": "something else",
+			"Nullable": null,
+			"undefined": undefined
+
+			// Support: Firefox
+			// Not all browsers allow empty-string headers
+			// https://bugzilla.mozilla.org/show_bug.cgi?id=815299
+			//"Empty": ""
 		},
 		success: function( data, _, xhr ) {
 			var i, emptyHeader,
@@ -201,12 +208,13 @@ module( "ajax", {
 				}),
 				tmp = [];
 			for ( i in requestHeaders ) {
-				tmp.push( i, ": ", requestHeaders[ i ], "\n" );
+				tmp.push( i, ": ", requestHeaders[ i ] + "", "\n" );
 			}
 			tmp = tmp.join("");
 
 			strictEqual( data, tmp, "Headers were sent" );
 			strictEqual( xhr.getResponseHeader("Sample-Header"), "Hello World", "Sample header received" );
+			ok( data.indexOf( "undefined" ) < 0 , "Undefined header value was not sent" );
 
 			emptyHeader = xhr.getResponseHeader("Empty-Header");
 			if ( emptyHeader === null ) {
@@ -243,7 +251,9 @@ module( "ajax", {
 			url: url("data/headers.php?keys=content-type"),
 			contentType: false,
 			success: function( data ) {
-				strictEqual( data, "content-type: \n", "Test content-type is not sent when options.contentType===false" );
+				// Some server/interpreter combinations always supply a Content-Type to scripts
+				data = data || "content-type: \n";
+				strictEqual( data, "content-type: \n", "Test content-type is not set when options.contentType===false" );
 			}
 		}
 	]);
@@ -1522,10 +1532,47 @@ module( "ajax", {
 		}
 	} );
 
-	testIframeWithCallback( "#14379 - jQuery.ajax() on unload", "ajax/onunload.html", function( status ) {
-		expect( 1 );
-		strictEqual( status, "success", "Request completed" );
-	});
+	// Support: Chrome 31.
+	// Chrome 31 doesn't fire Ajax requests in beforeunload event handler.
+	// There is no way for us to workaround it and it's been fixed in Chrome 32
+	// so let's just blacklist Chrome 31 as long as it's in TestSwarm.
+	// See https://code.google.com/p/chromium/issues/detail?id=321241
+	if ( navigator.userAgent.indexOf( " Chrome/31." ) === -1 ) {
+		testIframeWithCallback( "#14379 - jQuery.ajax() on unload", "ajax/onunload.html", function( status ) {
+			expect( 1 );
+			strictEqual( status, "success", "Request completed" );
+		});
+	}
+
+	ajaxTest( "#14683 - jQuery.ajax() - Exceptions thrown synchronously by xhr.send should be caught", 4, [
+		{
+			url: "data/params_html.php",
+			method: "POST",
+			data: {
+				toString: function() {
+					throw "Can't parse";
+				}
+			},
+			processData: false,
+			done: function( data ) {
+				ok( false, "done: " + data );
+			},
+			fail: function( jqXHR, status, error ) {
+				ok( true, "exception caught: " + error );
+				strictEqual( jqXHR.status, 0, "proper status code" );
+				strictEqual( status, "error", "proper status" );
+			}
+		},
+		{
+			url: "http://domain.org:80d",
+			done: function( data ) {
+				ok( false, "done: " + data );
+			},
+			fail: function( _, status, error ) {
+				ok( true, "fail: " + status + " - " + error );
+			}
+		}
+	]);
 
 //----------- jQuery.ajaxPrefilter()
 

@@ -4,15 +4,19 @@
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 	<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
 	<title>jQuery Test Suite</title>
-	<link rel="Stylesheet" media="screen" href="../bower_components/qunit/qunit/qunit.css" />
+	<link rel="Stylesheet" media="screen" href="libs/qunit/qunit.css" />
 	<link rel="Stylesheet" media="screen" href="data/testsuite.css" />
 	<!-- Includes -->
 
-	<!-- Allows us to fetch submodule tests when using a no-ajax build -->
-	<script src="data/jquery-1.9.1.ajax_xhr.min.js"></script>
+	<!--
+		We have to use previous jQuery as helper to ensure testability with
+		ajax-free builds (and non-interference when changing ajax internals)
+	-->
+	<script src="data/jquery-1.9.1.js"></script>
 
-	<script src="../bower_components/qunit/qunit/qunit.js"></script>
-	<script src="../bower_components/requirejs/require.js"></script>
+	<script src="libs/qunit/qunit.js"></script>
+	<script src="libs/require.js"></script>
+	<script src="libs/sinon/fake_timers.js"></script>
 	<!-- See testinit for the list of tests -->
 	<script src="data/testinit.js"></script>
 
@@ -23,13 +27,6 @@
 	<script src="jquery.js"></script>
 
 	<script>
-		// html5shiv, enabling HTML5 elements to be used with jQuery
-		( "abbr article aside audio bdi canvas data datalist details figcaption figure footer header hgroup " +
-			"mark meter nav output progress section summary time video"
-		).replace(/\w+/g, function(n) {
-			document.createElement(n);
-		});
-
 		// Load tests if they have not been loaded
 		// This is in a different script tag to ensure that
 		// jQuery is on the page when the testrunner executes

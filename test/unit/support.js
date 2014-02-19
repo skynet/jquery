@@ -30,12 +30,28 @@ if ( jQuery.css ) {
 	});
 }
 
+// This test checkes CSP only for browsers with "Content-Security-Policy" header support
+// i.e. no old WebKit or old Firefox
+testIframeWithCallback( "Check CSP (https://developer.mozilla.org/en-US/docs/Security/CSP) restrictions",
+	"support/csp.php",
+	function( support ) {
+		expect( 2 );
+		deepEqual( jQuery.extend( {}, support ), computedSupport, "No violations of CSP polices" );
+
+		stop();
+
+		supportjQuery.get( "data/support/csp.log" ).done(function( data ) {
+			equal( data, "", "No log request should be sent" );
+			supportjQuery.get( "data/support/csp-clean.php" ).done( start );
+		});
+	}
+);
+
 (function() {
-	var expected, version,
+	var expected,
 		userAgent = window.navigator.userAgent;
 
 	if ( /chrome/i.test( userAgent ) ) {
-		version = userAgent.match( /chrome\/(\d+)/i )[ 1 ];
 		expected = {
 			"ajax": true,
 			"boxSizingReliable": true,
@@ -47,7 +63,7 @@ if ( jQuery.css ) {
 			"noCloneChecked": true,
 			"optDisabled": true,
 			"optSelected": true,
-			"pixelPosition": version >= 28,
+			"pixelPosition": true,
 			"radioValue": true,
 			"reliableMarginRight": true
 		};
@@ -63,6 +79,22 @@ if ( jQuery.css ) {
 			"noCloneChecked": true,
 			"optDisabled": true,
 			"optSelected": true,
+			"pixelPosition": true,
+			"radioValue": false,
+			"reliableMarginRight": true
+		};
+	} else if ( /trident\/7\.0/i.test( userAgent ) ) {
+		expected = {
+			"ajax": true,
+			"boxSizingReliable": false,
+			"checkClone": true,
+			"checkOn": true,
+			"clearCloneStyle": false,
+			"cors": true,
+			"focusinBubbles": true,
+			"noCloneChecked": false,
+			"optDisabled": true,
+			"optSelected": false,
 			"pixelPosition": true,
 			"radioValue": false,
 			"reliableMarginRight": true
@@ -99,7 +131,7 @@ if ( jQuery.css ) {
 			"radioValue": false,
 			"reliableMarginRight": true
 		};
-	} else if ( /6\.0\.\d+ safari/i.test( userAgent ) ) {
+	} else if ( /7\.0(\.\d+|) safari/i.test( userAgent ) ) {
 		expected = {
 			"ajax": true,
 			"boxSizingReliable": true,
@@ -115,7 +147,23 @@ if ( jQuery.css ) {
 			"radioValue": true,
 			"reliableMarginRight": true
 		};
-	} else if ( /5\.1\.\d+ safari/i.test( userAgent ) ) {
+	} else if ( /6\.0(\.\d+|) safari/i.test( userAgent ) ) {
+		expected = {
+			"ajax": true,
+			"boxSizingReliable": true,
+			"checkClone": true,
+			"checkOn": true,
+			"clearCloneStyle": true,
+			"cors": true,
+			"focusinBubbles": false,
+			"noCloneChecked": true,
+			"optDisabled": true,
+			"optSelected": true,
+			"pixelPosition": false,
+			"radioValue": true,
+			"reliableMarginRight": true
+		};
+	} else if ( /5\.1(\.\d+|) safari/i.test( userAgent ) ) {
 		expected = {
 			"ajax":true,
 			"boxSizingReliable": true,
@@ -132,10 +180,9 @@ if ( jQuery.css ) {
 			"reliableMarginRight":true
 		};
 	} else if ( /firefox/i.test( userAgent ) ) {
-		version = userAgent.match( /firefox\/(\d+)/i )[ 1 ];
 		expected = {
 			"ajax": true,
-			"boxSizingReliable": version >= 23,
+			"boxSizingReliable": true,
 			"checkClone": true,
 			"checkOn": true,
 			"clearCloneStyle": true,
@@ -145,6 +192,22 @@ if ( jQuery.css ) {
 			"optDisabled": true,
 			"optSelected": true,
 			"pixelPosition": true,
+			"radioValue": true,
+			"reliableMarginRight": true
+		};
+	} else if ( /iphone os 6_0/i.test( userAgent ) ) {
+		expected = {
+			"ajax": true,
+			"boxSizingReliable": true,
+			"checkClone": true,
+			"checkOn": true,
+			"clearCloneStyle": true,
+			"cors": true,
+			"focusinBubbles": false,
+			"noCloneChecked": true,
+			"optDisabled": true,
+			"optSelected": true,
+			"pixelPosition": false,
 			"radioValue": true,
 			"reliableMarginRight": true
 		};
@@ -175,17 +238,3 @@ if ( jQuery.css ) {
 	}
 
 })();
-
-// Support: Safari 5.1
-// Shameless browser-sniff, but Safari 5.1 mishandles CSP
-if ( !( typeof navigator !== "undefined" &&
-	(/ AppleWebKit\/\d.*? Version\/(\d+)/.exec(navigator.userAgent) || [])[1] < 6 ) ) {
-
-	testIframeWithCallback( "Check CSP (https://developer.mozilla.org/en-US/docs/Security/CSP) restrictions",
-		"support/csp.php",
-		function( support ) {
-			expect( 1 );
-			deepEqual( jQuery.extend( {}, support ), computedSupport, "No violations of CSP polices" );
-		}
-	);
-}

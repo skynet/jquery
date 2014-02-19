@@ -391,9 +391,10 @@ test("css(Object) where values are Functions with incoming values", function() {
 });
 
 test("show(); hide()", function() {
-	expect(22);
 
-	var hiddendiv, div, pass, old, test;
+	expect( 4 );
+
+	var hiddendiv, div;
 
 	hiddendiv = jQuery("div.hidden");
 	hiddendiv.hide();
@@ -406,8 +407,13 @@ test("show(); hide()", function() {
 	div.appendTo("#qunit-fixture").show();
 	equal( div.css("display"), "block", "Pre-hidden div shown" );
 
-	QUnit.reset();
+});
 
+test("show();", function() {
+
+	expect( 18 );
+
+  var hiddendiv, div, pass, old, test;
 	hiddendiv = jQuery("div.hidden");
 
 	equal(jQuery.css( hiddendiv[0], "display"), "none", "hiddendiv is display: none");
@@ -620,7 +626,6 @@ test("toggle()", function() {
 
 test("hide hidden elements (bug #7141)", function() {
 	expect(3);
-	QUnit.reset();
 
 	var div = jQuery("<div style='display:none'></div>").appendTo("#qunit-fixture");
 	equal( div.css("display"), "none", "Element is hidden by default" );
@@ -700,29 +705,22 @@ test("widows & orphans #8936", function () {
 
 	var $p = jQuery("<p>").appendTo("#qunit-fixture");
 
-	if ( "widows" in $p[0].style ) {
-		expect(4);
-		$p.css({
-			"widows": 0,
-			"orphans": 0
-		});
+	expect( 4 );
+	$p.css({
+		"widows": 0,
+		"orphans": 0
+	});
 
-		equal( $p.css("widows") || jQuery.style( $p[0], "widows" ), 0, "widows correctly start with value 0");
-		equal( $p.css("orphans") || jQuery.style( $p[0], "orphans" ), 0, "orphans correctly start with value 0");
+	equal( $p.css( "widows" ) || jQuery.style( $p[0], "widows" ), 0, "widows correctly start with value 0" );
+	equal( $p.css( "orphans" ) || jQuery.style( $p[0], "orphans" ), 0, "orphans correctly start with value 0" );
 
-		$p.css({
-			"widows": 3,
-			"orphans": 3
-		});
+	$p.css({
+		"widows": 3,
+		"orphans": 3
+	});
 
-		equal( $p.css("widows") || jQuery.style( $p[0], "widows" ), 3, "widows correctly set to 3");
-		equal( $p.css("orphans") || jQuery.style( $p[0], "orphans" ), 3, "orphans correctly set to 3");
-	} else {
-
-		expect(1);
-		ok( true, "jQuery does not attempt to test for style props that definitely don't exist in older versions of IE");
-	}
-
+	equal( $p.css( "widows" ) || jQuery.style( $p[0], "widows" ), 3, "widows correctly set to 3" );
+	equal( $p.css( "orphans" ) || jQuery.style( $p[0], "orphans" ), 3, "orphans correctly set to 3" );
 
 	$p.remove();
 });
@@ -761,12 +759,6 @@ test("can't get background-position in IE<9, see #10796", function() {
 	}
 });
 
-test("percentage properties for bottom and right in IE<9 should not be incorrectly transformed to pixels, see #11311", function() {
-	expect( 1 );
-	var div = jQuery("<div style='position: absolute; width: 1px; height: 20px; bottom:50%;'></div>").appendTo( "#qunit-fixture" );
-	ok( window.getComputedStyle || div.css( "bottom" ) === "50%", "position properties get incorrectly transformed in IE<8, see #11311" );
-});
-
 if ( jQuery.fn.offset ) {
 	test("percentage properties for left and top should be transformed to pixels, see #9505", function() {
 		expect( 2 );
@@ -784,7 +776,12 @@ test("Do not append px (#9548, #12990)", function() {
 	var $div = jQuery("<div>").appendTo("#qunit-fixture");
 
 	$div.css( "fill-opacity", 1 );
-	equal( $div.css("fill-opacity"), 1, "Do not append px to 'fill-opacity'" );
+	// Support: Android 2.3 (no support for fill-opacity)
+	if ( $div.css( "fill-opacity" ) ) {
+		equal( $div.css( "fill-opacity" ), 1, "Do not append px to 'fill-opacity'" );
+	} else {
+		ok( true, "No support for fill-opacity CSS property" );
+	}
 
 	$div.css( "column-count", 1 );
 	if ( $div.css("column-count") ) {
@@ -797,7 +794,7 @@ test("Do not append px (#9548, #12990)", function() {
 test("css('width') and css('height') should respect box-sizing, see #11004", function() {
 	expect( 4 );
 
-	// Support: Firefox, Android 2.3 (Prefixed box-sizing versions).
+	// Support: Firefox<29, Android 2.3 (Prefixed box-sizing versions).
 	var el_dis = jQuery("<div style='width:300px;height:300px;margin:2px;padding:2px;-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box;'>test</div>"),
 		el = el_dis.clone().appendTo("#qunit-fixture");
 

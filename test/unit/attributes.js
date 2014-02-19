@@ -590,8 +590,7 @@ test( "removeAttr(String)", function() {
 	$first = jQuery("<div Case='mixed'></div>");
 	equal( $first.attr("Case"), "mixed", "case of attribute doesn't matter" );
 	$first.removeAttr("Case");
-	// IE 6/7 return empty string here, not undefined
-	ok( !$first.attr("Case"), "mixed-case attribute was removed" );
+	equal( $first.attr( "Case" ), undefined, "mixed-case attribute was removed" );
 });
 
 test( "removeAttr(String) in XML", function() {
@@ -636,7 +635,8 @@ test( "removeAttr(Multi String, variable space width)", function() {
 });
 
 test( "prop(String, Object)", function() {
-	expect( 31 );
+
+	expect( 17 );
 
 	equal( jQuery("#text1").prop("value"), "Test", "Check for value attribute" );
 	equal( jQuery("#text1").prop( "value", "Test2" ).prop("defaultValue"), "Test", "Check for defaultValue attribute" );
@@ -664,7 +664,11 @@ test( "prop(String, Object)", function() {
 	equal( jQuery("#table").prop("useMap"), 1, "Check setting and retrieving useMap" );
 	jQuery("#table").prop( "frameborder", 1 );
 	equal( jQuery("#table").prop("frameBorder"), 1, "Check setting and retrieving frameBorder" );
-	QUnit.reset();
+});
+
+test( "prop(String, Object) on null/undefined", function() {
+
+  expect( 14 );
 
 	var select, optgroup, option, attributeNode, commentNode, textNode, obj, $form,
 		body = document.body,
@@ -796,16 +800,20 @@ test( "removeProp(String)", function() {
 	});
 });
 
-test( "val()", function() {
-	expect( 21 + ( jQuery.fn.serialize ? 6 : 0 ) );
+test( "val() after modification", function() {
 
-	var checks, $button;
+	expect( 1 );
 
 	document.getElementById("text1").value = "bla";
 	equal( jQuery("#text1").val(), "bla", "Check for modified value of input element" );
+});
 
-	QUnit.reset();
 
+test( "val()", function() {
+
+	expect( 20 + ( jQuery.fn.serialize ? 6 : 0 ) );
+
+	var checks, $button;
 	equal( jQuery("#text1").val(), "Test", "Check for value of input element" );
 	// ticket #1714 this caused a JS error in IE
 	equal( jQuery("#first").val(), "", "Check a paragraph element to see if it has a value" );
@@ -918,9 +926,8 @@ if ( "value" in document.createElement("meter") &&
 }
 
 var testVal = function( valueObj ) {
-	expect( 8 );
+	expect( 9 );
 
-	QUnit.reset();
 	jQuery("#text1").val( valueObj("test") );
 	equal( document.getElementById("text1").value, "test", "Check for modified (via val(String)) value of input element" );
 
@@ -934,7 +941,9 @@ var testVal = function( valueObj ) {
 	equal( document.getElementById("text1").value, "", "Check for modified (via val(null)) value of input element" );
 
 	var j,
+		$select = jQuery( "<select multiple><option value='1'/><option value='2'/></select>" ),
 		$select1 = jQuery("#select1");
+
 	$select1.val( valueObj("3") );
 	equal( $select1.val(), "3", "Check for modified (via val(String)) value of select element" );
 
@@ -950,6 +959,9 @@ var testVal = function( valueObj ) {
 	j.val( valueObj( "asdf" ) );
 	equal( j.val(), "asdf", "Check node,textnode,comment with val()" );
 	j.removeAttr("value");
+
+	$select.val( valueObj( [ "1", "2" ] ) );
+	deepEqual( $select.val(), [ "1", "2" ], "Should set array of values" );
 };
 
 test( "val(String/Number)", function() {
@@ -975,7 +987,6 @@ test( "val(Array of Numbers) (Bug #7123)", function() {
 test( "val(Function) with incoming value", function() {
 	expect( 10 );
 
-	QUnit.reset();
 	var oldVal = jQuery("#text1").val();
 
 	jQuery("#text1").val(function( i, val ) {
@@ -1438,4 +1449,13 @@ test( "coords returns correct values in IE6/IE7, see #10828", function() {
 
 	area = map.html("<area shape='rect' coords='0,0,0,0' href='#' alt='a' />").find("area");
 	equal( area.attr("coords"), "0,0,0,0", "did not retrieve coords correctly" );
+});
+
+test( "should not throw at $(option).val() (#14686)", 1, function() {
+	try {
+		jQuery( "<option/>" ).val();
+		ok( true );
+	} catch ( _ ) {
+		ok( false );
+	}
 });
